@@ -9,6 +9,7 @@ Where it makes sense, methods that take a key can take it in the following forms
   - a composition of simple keys: "attr1.attr2.attr3"
   - a disjunction of space-separated alternatives: "attr1 attr2.attr3"
 """
+from __future__ import absolute_import
 import contextlib
 from collections import OrderedDict as ordict
 import itertools as it, functools as ft
