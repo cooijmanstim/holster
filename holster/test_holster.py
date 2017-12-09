@@ -36,5 +36,9 @@ class HolsterTest(unittest.TestCase):
     self.assertEqual(set(h.g.Keys()), set("tv"))
     self.assertEqual(set(h.g.Narrow("t v").Keys()), set("tv"))
 
+  def test_regression2(self):
+    h = H(k=H())
+    self.assertEqual(set(h.Keys()), set("k"))
+
 if __name__ == "__main__":
   unittest.main()

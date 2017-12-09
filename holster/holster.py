@@ -263,7 +263,7 @@ class BaseHolster(object):
 
   def With(self, items=(), **kwargs):
     """Create a copy of `self` augmented with items from `items` and `kwargs`."""
-    h = H(self)
+    h = Holster(self)
     h.Update(items)
     h.Update(kwargs)
     return h
