@@ -171,7 +171,7 @@ class BaseHolster(object):
     return bool(self.Get(key, False))
 
   def __iter__(self):
-    return self.Keys()
+    return iter(self.Keys())
 
   def __eq__(self, other):
     if not isinstance(other, BaseHolster):
