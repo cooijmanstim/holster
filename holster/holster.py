@@ -122,6 +122,8 @@ def keyancestors(key, strict=False):
     for i in range(1, len(parts) + (0 if strict else 1)):
       yield ".".join(parts[:i])
 
+NODEFAULT = object()
+
 class BaseHolster(object):
   # This abstract base class defines the general Holster interface. Any behaviour it defines should
   # be in terms of the abstract interface.
@@ -130,7 +132,7 @@ class BaseHolster(object):
     """Iterate over keys."""
     raise NotImplementedError()
 
-  def Get(self, key):
+  def Get(self, key, default=NODEFAULT):
     """Obtain value associated to key `key`."""
     raise NotImplementedError()
 
@@ -166,11 +168,7 @@ class BaseHolster(object):
   # listed by Holster.Keys() may be reported as contained in the data structure. Keys() yields leaf
   # node keys, whereas __contains__() is true for internal node keys as well.
   def __contains__(self, key):
-    try:
-      _ = self.Get(key)
-      return True
-    except KeyError:
-      return False
+    return bool(self.Get(key, False))
 
   def __iter__(self):
     return self.Keys()
@@ -296,12 +294,20 @@ class Holster(BaseHolster):
   def Keys(self):
     return self.Data.keys()
 
-  def Get(self, key):
-    try:
+  def Get(self, key, default=NODEFAULT):
+    # if the key matches a leaf, return that
+    if key in self.Data:
       return self.Data[key]
-    except KeyError:
-      self._CheckAncestors(key)
-      return HolsterSubtree(self, key)
+    # else suppose key refers to a subtree
+    self._CheckAncestors(key)
+    subtree = HolsterSubtree(self, key)
+    if subtree:
+      return subtree
+    # key did not refer to an (existing) subtree
+    if default is NODEFAULT:
+      raise KeyError(key)
+    else:
+      return default
 
   def Set(self, key, value):
     self._CheckAncestors(key)
@@ -367,16 +373,14 @@ class HolsterSubtree(BaseHolster):
       raise ValueError("HolsterSubtree does not support disjunctive keys")
     self.Other = other
     self.Key = key
-    if not self:
-      raise KeyError(self.Key)
 
   def Keys(self):
     for key in self.Other.Keys():
       if insubtree(key, self.Key):
         yield uncomposekey(self.Key, key)
 
-  def Get(self, key):
-    return self.Other.Get(composekey(self.Key, key))
+  def Get(self, key, default=NODEFAULT):
+    return self.Other.Get(composekey(self.Key, key), default)
 
   def Set(self, key, value):
     self.Other[composekey(self.Key, key)] = value
@@ -416,7 +420,7 @@ class HolsterNarrow(BaseHolster):
       if insubforest(key, self.Key):
         yield key
 
-  def Get(self, key):
+  def Get(self, key, default=NODEFAULT):
     assert " " not in key
     # two cases:
     # (1) key is a (nonstrict) child of one of the self.Key alternatives.
@@ -431,7 +435,7 @@ class HolsterNarrow(BaseHolster):
       subalts = None
     if subalts is None:
       raise KeyError("key excluded by narrowing expression %s" % self.Key, key)
-    result = self.Other.Get(key)
+    result = self.Other.Get(key, default)
     if subalts and isinstance(result, HolsterSubtree):
       result = result.Narrow(subalts)
     return result
