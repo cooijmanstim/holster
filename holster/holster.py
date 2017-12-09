@@ -145,15 +145,15 @@ class BaseHolster(object):
     raise NotImplementedError()
 
   def __getattr__(self, key):
-    if key[0].isupper():
-      return self.__dict__[key]
+    if key[0].isupper() or key.startswith("__"):
+      return super().__getattr__(key)
     return self.Get(key)
 
   def __setattr__(self, key, value):
-    if key[0].isupper():
-      self.__dict__[key] = value
+    if key[0].isupper() or key.startswith("__"):
+      super().__setattr__(key, value)
     else:
-      self[key] = value
+      self.Set(key, value)
 
   def __getitem__(self, key):
     return self.Get(key)
