@@ -319,8 +319,7 @@ class Holster(BaseHolster):
       for k, v in value.Items():
         self.Set(composekey(key, k), v)
     else:
-      for alt in key.split(" "):
-        self.Data[alt] = value
+      self.Data[key] = value
 
   def Delete(self, key):
     for alt in key.split(" "):
