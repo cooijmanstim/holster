@@ -168,7 +168,12 @@ class BaseHolster(object):
   # listed by Holster.Keys() may be reported as contained in the data structure. Keys() yields leaf
   # node keys, whereas __contains__() is true for internal node keys as well.
   def __contains__(self, key):
-    return bool(self.Get(key, False))
+    try:
+      self.Get(key)
+    except KeyError:
+      return False
+    else:
+      return True
 
   def __iter__(self):
     return iter(self.Keys())
