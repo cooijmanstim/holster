@@ -144,13 +144,13 @@ class BaseHolster(object):
     """Delete the item associated with `key`."""
     raise NotImplementedError()
 
-  def __getattr__(self, key):
-    if key[0].isupper() or key.startswith("__"):
-      return super().__getattr__(key)
+  def __getattribute__(self, key):
+    if key[0].isupper() or key.startswith("_"):
+      return super().__getattribute__(key)
     return self.Get(key)
 
   def __setattr__(self, key, value):
-    if key[0].isupper() or key.startswith("__"):
+    if key[0].isupper() or key.startswith("_"):
       super().__setattr__(key, value)
     else:
       self.Set(key, value)
