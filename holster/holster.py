@@ -256,6 +256,9 @@ class BaseHolster(object):
     """
     return Holster(util.equizip(self.Keys(), fn(list(self.Values()), *args, **kwargs)))
 
+  def Map(self, fn):
+    return FlatCall(lambda values: list(map(fn, values)))
+
   def Zip(self, other):
     """Zip values of `self` and `other` with corresponding keys.
 
@@ -302,9 +305,11 @@ class Holster(BaseHolster):
   def Get(self, key, default=NODEFAULT):
     # if the key matches a leaf, return that
     if key in self.Data:
-      return self.Data[key]
+      if isinstance(value, EmptyHolster):
+        return HolsterSubtree(self, key)
+      else:
+        return self.Data[key]
     # else suppose key refers to a subtree
-    self._CheckAncestors(key)
     subtree = HolsterSubtree(self, key)
     if subtree:
       return subtree
@@ -321,8 +326,11 @@ class Holster(BaseHolster):
     except KeyError:
       pass
     if isinstance(value, BaseHolster):
-      for k, v in value.Items():
-        self.Set(composekey(key, k), v)
+      if value.Empty():
+        self.Data[key] = EmptyHolster()
+      else:
+        for k, v in value.Items():
+          self.Set(composekey(key, k), v)
     else:
       self.Data[key] = value
 
@@ -336,7 +344,7 @@ class Holster(BaseHolster):
       del self.Data[key]
 
   def __len__(self):
-    return len(self.Data)
+    return len([x for x in self.Data.values() if not isinstance(x, EmptyHolster)])
 
   def __repr__(self):
     return "Holster([%s])" % ", ".join("(%r, %r)" % (key, value)
@@ -355,12 +363,44 @@ class Holster(BaseHolster):
     #
     # This structure poses no problems for the representation, but is at odds with the conceptually
     # simple view of Holster as a nested dict.
+    #
+    # FIXME: it is still possible for this to be violated AFTER a HolsterSubtree is created
     ancestor = util.argany(a for a in keyancestors(key, strict=True)
                            if a in self.Data)
     if ancestor:
       raise KeyError("cannot descend into leaf node %s at %s"
                      % (repr(self.Data[ancestor])[:50], ancestor),
                      key)
+
+class EmptyHolster(BaseHolster):
+  """Represents an empty holster.
+
+  Nesting an empty holster inside of an outer holster is finicky because only elements are
+  explicitly stored, and hence empty subtrees are treated as nonexistent. In order to mask this
+  behavior, we assign an EmptyHolster instance when a user explicitly assigns an empty holster
+  to be an item of an outer holster. The Holster class treats EmptyHolster as a special case
+  so that its path is treated as an existing, empty subtree.
+  """
+  def Keys(self):
+    return ()
+
+  def Get(self, key, default=NODEFAULT):
+    raise NotImplementedError()
+
+  def Set(self, key, value):
+    raise NotImplementedError()
+
+  def Delete(self, key):
+    raise NotImplementedError()
+
+  def __len__(self):
+    return 0
+
+  def __repr__(self):
+    return "EmptyHolster()"
+
+  def __str__(self):
+    return "E"
 
 class HolsterSubtree(BaseHolster):
   """Holster object that acts as a view onto another Holster's subtree.
@@ -375,6 +415,7 @@ class HolsterSubtree(BaseHolster):
     """
     if " " in key:
       raise ValueError("HolsterSubtree does not support disjunctive keys")
+    other._CheckAncestors(key)
     self.Other = other
     self.Key = key
 
