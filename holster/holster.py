@@ -300,12 +300,14 @@ class Holster(BaseHolster):
     self.Update(kwargs)
 
   def Keys(self):
-    return self.Data.keys()
+    return [key for key, value in self.Data.items()
+            if not isinstance(value, EmptyHolster)]
 
   def Get(self, key, default=NODEFAULT):
+    assert " " not in key
     # if the key matches a leaf, return that
     if key in self.Data:
-      if isinstance(value, EmptyHolster):
+      if isinstance(self.Data[key], EmptyHolster):
         return HolsterSubtree(self, key)
       else:
         return self.Data[key]
@@ -320,13 +322,26 @@ class Holster(BaseHolster):
       return default
 
   def Set(self, key, value):
-    self._CheckAncestors(key)
+    assert " " not in key
+
+    # key may point to a subtree of an EmptyHolster, which would violate _CheckAncestors but is a
+    # specially permitted case. We delete the EmptyHolster to make room for the assignment.
+    ancestors = [a for a in keyancestors(key, strict=True)
+                 if a in self.Data]
+    for ancestor in ancestors:
+      if isinstance(self.Data[ancestor], EmptyHolster):
+        del self.Data[ancestor]
+      else:
+        raise KeyError("cannot descend into leaf node %s at %s"
+                       % (repr(self.Data[ancestor])[:50], ancestor),
+                       key)
+
     try:
       del self[key] # to ensure descendants are gone
     except KeyError:
       pass
     if isinstance(value, BaseHolster):
-      if value.Empty():
+      if not value:
         self.Data[key] = EmptyHolster()
       else:
         for k, v in value.Items():

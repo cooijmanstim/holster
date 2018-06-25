@@ -5,22 +5,21 @@ from holster import H
 
 class HolsterTest(unittest.TestCase):
   def test(self):
-    h = H([("c.d", H(e=3)), ("c.f.g c.f.h", 4), ("c.f.i", [5])], a=1, b=2)
+    h = H([("c.d", H(e=3)), ("c.f.g", 4), ("c.f.h", [5])], a=1, b=2)
     self.assertEqual(h.a, 1)
     self.assertEqual(h.b, 2)
     self.assertEqual(h.c.d.e, 3)
     self.assertEqual(h.c.f.g, 4)
-    self.assertEqual(h.c.f.h, 4)
-    self.assertEqual(h.c.f.i, [5])
-    g = h.Narrow("c.d.e c.f.i")
+    self.assertEqual(h.c.f.h, [5])
+    g = h.Narrow("c.d.e c.f.h")
     with self.assertRaises(KeyError): g.a
     with self.assertRaises(KeyError): g.c.f.g
     self.assertEqual(g.c.d.e, 3)
-    self.assertEqual(g.c.f.i, [5])
+    self.assertEqual(g.c.f.h, [5])
     g = h.c.f
     self.assertEqual(dict(g.Items()),
-                     dict(g=4, h=4, i=[5]))
-    self.assertEqual(set(h.Keys()), set("c.d.e c.f.g c.f.h c.f.i a b".split()))
+                     dict(g=4, h=[5]))
+    self.assertEqual(set(h.Keys()), set("c.d.e c.f.g c.f.h a b".split()))
     self.assertEqual(h.FlatCall(lambda x: x), h)
     self.assertEqual(h.c.FlatCall(lambda x: x), h.c)
 
@@ -38,7 +37,7 @@ class HolsterTest(unittest.TestCase):
 
   def test_regression2(self):
     h = H(k=H())
-    self.assertEqual(set(h.Keys()), set("k"))
+    h.k.l = 2
 
 if __name__ == "__main__":
   unittest.main()
