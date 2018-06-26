@@ -42,6 +42,9 @@ class HolsterTest(unittest.TestCase):
     h = H(k=H())
     g.h = h
     g.h.k.l = 2
+    i = h.Map(lambda x: x + 1)
+    self.assertEqual(i.Size(), 0)
+    i.k.l = 2
 
 if __name__ == "__main__":
   unittest.main()

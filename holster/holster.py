@@ -257,16 +257,20 @@ class BaseHolster(object):
       assert set(other.Keys()) == set(self.Keys())
       assert all(other[key] == fn(self[key]) for key in self.Keys())
     """
-    return Holster(util.equizip(self.Keys(), fn(list(self.Values()), *args, **kwargs)))
+    other = Holster(util.equizip(self.Keys(), fn(list(self.Values()), *args, **kwargs)))
+    other._PropagateEmpty(self)
+    return other
 
   def Map(self, fn):
-    return FlatCall(lambda values: list(map(fn, values)))
+    return self.FlatCall(lambda values: list(map(fn, values)))
 
   def Zip(self, other):
     """Zip values of `self` and `other` with corresponding keys.
 
     Key set and order is determined by `self`."""
-    return ((self.Get(key), other.Get(key)) for key in self.Keys())
+    yetother = ((self.Get(key), other.Get(key)) for key in self.Keys())
+    yetother._PropagateEmpty(self)
+    return yetother
 
   def AsDict(self):
     """Convert to an ordered dict."""
@@ -293,6 +297,12 @@ class BaseHolster(object):
         self.Set(key, old.Get(key))
       else:
         self.Delete(key)
+
+  def _PropagateEmpty(self, other):
+    """Copy over empty namespaces from `other` into `self`."""
+    for key, value in other.Items(_include_empty=True):
+      if isinstance(value, EmptyHolster):
+        self[key] = value
 
 class Holster(BaseHolster):
   # The fundamental Holster object wraps an ordered dict.
