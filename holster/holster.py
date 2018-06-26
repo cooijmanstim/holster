@@ -265,7 +265,7 @@ class BaseHolster(object):
     return self.FlatCall(lambda values: list(map(fn, values)))
 
   def MapItems(self, fn):
-    other = H()
+    other = Holster()
     other._PropagateEmpty(self)
     for key, value in self.Items():
       newkey, newvalue = fn(key, value)
