@@ -264,6 +264,14 @@ class BaseHolster(object):
   def Map(self, fn):
     return self.FlatCall(lambda values: list(map(fn, values)))
 
+  def MapItems(self, fn):
+    other = H()
+    other._PropagateEmpty(self)
+    for key, value in self.Items():
+      newkey, newvalue = fn(key, value)
+      other[newkey] = newvalue
+    return other
+
   def Zip(self, other):
     """Zip values of `self` and `other` with corresponding keys.
 
