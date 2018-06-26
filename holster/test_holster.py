@@ -38,6 +38,10 @@ class HolsterTest(unittest.TestCase):
   def test_regression2(self):
     h = H(k=H())
     h.k.l = 2
+    g = H()
+    h = H(k=H())
+    g.h = h
+    g.h.k.l = 2
 
 if __name__ == "__main__":
   unittest.main()

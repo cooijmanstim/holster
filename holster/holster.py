@@ -128,7 +128,7 @@ class BaseHolster(object):
   # This abstract base class defines the general Holster interface. Any behaviour it defines should
   # be in terms of the abstract interface.
 
-  def Keys(self):
+  def Keys(self, _include_empty=False):
     """Iterate over keys."""
     raise NotImplementedError()
 
@@ -202,15 +202,18 @@ class BaseHolster(object):
 
   __nonzero__ = __bool__
 
+  def Size(self, _include_empty=False):
+    return len(list(self.Keys(_include_empty=_include_empty)))
+
   def Values(self):
     """Iterate over values."""
     for key in self.Keys():
       yield self.Get(key)
 
-  def Items(self):
+  def Items(self, _include_empty=False):
     """Iterate over items."""
-    for key in self.Keys():
-      yield (key, self.Get(key))
+    for key in self.Keys(_include_empty=_include_empty):
+      yield (key, self.Get(key, _include_empty=_include_empty))
 
   def Update(self, other):
     """Update `self` with items from `other`.
@@ -218,7 +221,7 @@ class BaseHolster(object):
     `other` can be a Holster object, a dict, or a sequence of pairs.
     """
     if isinstance(other, BaseHolster):
-      for key, value in other.Items():
+      for key, value in other.Items(_include_empty=True):
         self[key] = value
     elif hasattr(other, "keys"): # dict
       for key, value in other.items():
@@ -299,21 +302,21 @@ class Holster(BaseHolster):
     self.Update(items)
     self.Update(kwargs)
 
-  def Keys(self):
+  def Keys(self, _include_empty=False):
     return [key for key, value in self.Data.items()
-            if not isinstance(value, EmptyHolster)]
+            if _include_empty or not isinstance(value, EmptyHolster)]
 
-  def Get(self, key, default=NODEFAULT):
+  def Get(self, key, default=NODEFAULT, _include_empty=False):
     assert " " not in key
     # if the key matches a leaf, return that
     if key in self.Data:
-      if isinstance(self.Data[key], EmptyHolster):
+      if isinstance(self.Data[key], EmptyHolster) and not _include_empty:
         return HolsterSubtree(self, key)
       else:
         return self.Data[key]
     # else suppose key refers to a subtree
     subtree = HolsterSubtree(self, key)
-    if subtree:
+    if subtree.Size(_include_empty=True) > 0:
       return subtree
     # key did not refer to an (existing) subtree
     if default is NODEFAULT:
@@ -340,20 +343,21 @@ class Holster(BaseHolster):
       del self[key] # to ensure descendants are gone
     except KeyError:
       pass
+
     if isinstance(value, BaseHolster):
-      if not value:
+      if value.Size(_include_empty=True) == 0:
         self.Data[key] = EmptyHolster()
       else:
-        for k, v in value.Items():
+        for k, v in value.Items(_include_empty=True):
           self.Set(composekey(key, k), v)
     else:
       self.Data[key] = value
 
   def Delete(self, key):
     for alt in key.split(" "):
-      subtree = self.Get(alt)
-      if isinstance(subtree, BaseHolster):
-        for subkey in list(subtree.Keys()):
+      subtree = self.Get(alt, _include_empty=True)
+      if isinstance(subtree, BaseHolster) and not isinstance(subtree, EmptyHolster):
+        for subkey in list(subtree.Keys(_include_empty=True)):
           # recursive, but in the inner call subtree will be a leaf
           self.Delete(subkey)
       del self.Data[key]
@@ -363,7 +367,7 @@ class Holster(BaseHolster):
 
   def __repr__(self):
     return "Holster([%s])" % ", ".join("(%r, %r)" % (key, value)
-                                       for key, value in self.Items())
+                                       for key, value in self.Items(_include_empty=True))
 
   def __str__(self):
     return "H{%s}" % ", ".join("%s: %s" % (key, value)
@@ -381,7 +385,7 @@ class Holster(BaseHolster):
     #
     # FIXME: it is still possible for this to be violated AFTER a HolsterSubtree is created
     ancestor = util.argany(a for a in keyancestors(key, strict=True)
-                           if a in self.Data)
+                           if a in self.Data and not isinstance(self.Data[a], EmptyHolster))
     if ancestor:
       raise KeyError("cannot descend into leaf node %s at %s"
                      % (repr(self.Data[ancestor])[:50], ancestor),
@@ -396,10 +400,10 @@ class EmptyHolster(BaseHolster):
   to be an item of an outer holster. The Holster class treats EmptyHolster as a special case
   so that its path is treated as an existing, empty subtree.
   """
-  def Keys(self):
+  def Keys(self, _include_empty=False):
     return ()
 
-  def Get(self, key, default=NODEFAULT):
+  def Get(self, key, default=NODEFAULT, _include_empty=False):
     raise NotImplementedError()
 
   def Set(self, key, value):
@@ -434,13 +438,13 @@ class HolsterSubtree(BaseHolster):
     self.Other = other
     self.Key = key
 
-  def Keys(self):
-    for key in self.Other.Keys():
+  def Keys(self, _include_empty=False):
+    for key in self.Other.Keys(_include_empty=_include_empty):
       if insubtree(key, self.Key):
         yield uncomposekey(self.Key, key)
 
-  def Get(self, key, default=NODEFAULT):
-    return self.Other.Get(composekey(self.Key, key), default)
+  def Get(self, key, default=NODEFAULT, _include_empty=False):
+    return self.Other.Get(composekey(self.Key, key), default, _include_empty=_include_empty)
 
   def Set(self, key, value):
     self.Other[composekey(self.Key, key)] = value
@@ -475,12 +479,12 @@ class HolsterNarrow(BaseHolster):
       if alt not in self.Other:
         raise KeyError("narrowing to nonexistent key", alt)
 
-  def Keys(self):
-    for key in self.Other.Keys():
+  def Keys(self, _include_empty=False):
+    for key in self.Other.Keys(_include_empty=_include_empty):
       if insubforest(key, self.Key):
         yield key
 
-  def Get(self, key, default=NODEFAULT):
+  def Get(self, key, default=NODEFAULT, _include_empty=False):
     assert " " not in key
     # two cases:
     # (1) key is a (nonstrict) child of one of the self.Key alternatives.
@@ -495,7 +499,7 @@ class HolsterNarrow(BaseHolster):
       subalts = None
     if subalts is None:
       raise KeyError("key excluded by narrowing expression %s" % self.Key, key)
-    result = self.Other.Get(key, default)
+    result = self.Other.Get(key, default, _include_empty=_include_empty)
     if subalts and isinstance(result, HolsterSubtree):
       result = result.Narrow(subalts)
     return result
