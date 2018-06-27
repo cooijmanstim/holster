@@ -261,16 +261,18 @@ class BaseHolster(object):
     other._PropagateEmpty(self)
     return other
 
-  def Map(self, fn, *others):
-    return self.MapItems(lambda key, *values: return key, fn(*values), *others)
+  @classmethod
+  def Map(klass, fn, *holsters):
+    return klass.MapItems(lambda key, *values: return (key, fn(*values)), *holsters)
 
-  def MapItems(self, fn, *others):
-    if not all(set(self.Keys()) == set(other.Keys()) for other in others):
+  @classmethod
+  def MapItems(klass, fn, *holsters):
+    if not all(set(holsters[0].Keys()) == set(holster.Keys()) for holster in holsters):
       raise ValueError("cannot map over non-isomorphic holsters")
     result = Holster()
-    result._PropagateEmpty(self)
+    result._PropagateEmpty(holsters[0])
     for key in self.Keys():
-      values = (self[key],) + tuple(other[key] for other in others)
+      values = tuple(holster[key] for holster in holsters)
       newkey, newvalue = fn(key, *values)
       result[newkey] = newvalue
     return result
