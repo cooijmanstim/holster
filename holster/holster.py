@@ -276,7 +276,7 @@ class BaseHolster(object):
     """Zip values of `self` and `other` with corresponding keys.
 
     Key set and order is determined by `self`."""
-    yetother = ((self.Get(key), other.Get(key)) for key in self.Keys())
+    yetother = Holster((self.Get(key), other.Get(key)) for key in self.Keys())
     yetother._PropagateEmpty(self)
     return yetother
 
