@@ -261,24 +261,27 @@ class BaseHolster(object):
     other._PropagateEmpty(self)
     return other
 
-  def Map(self, fn):
-    return self.FlatCall(lambda values: list(map(fn, values)))
+  def Map(self, fn, *others):
+    return self.MapItems(lambda key, *values: return key, fn(*values), *others)
 
-  def MapItems(self, fn):
-    other = Holster()
-    other._PropagateEmpty(self)
-    for key, value in self.Items():
-      newkey, newvalue = fn(key, value)
-      other[newkey] = newvalue
-    return other
+  def MapItems(self, fn, *others):
+    if not all(set(self.Keys()) == set(other.Keys()) for other in others):
+      raise ValueError("cannot map over non-isomorphic holsters")
+    result = Holster()
+    result._PropagateEmpty(self)
+    for key in self.Keys():
+      values = (self[key],) + tuple(other[key] for other in others)
+      newkey, newvalue = fn(key, *values)
+      result[newkey] = newvalue
+    return result
 
   def Zip(self, other):
     """Zip values of `self` and `other` with corresponding keys.
 
+    Returns an iterable of paired values from `self` and `other`.
+
     Key set and order is determined by `self`."""
-    yetother = Holster((self.Get(key), other.Get(key)) for key in self.Keys())
-    yetother._PropagateEmpty(self)
-    return yetother
+    return (self.Get(key), other.Get(key)) for key in self.Keys()
 
   def AsDict(self):
     """Convert to an ordered dict."""
