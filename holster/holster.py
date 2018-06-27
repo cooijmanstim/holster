@@ -283,7 +283,7 @@ class BaseHolster(object):
     Returns an iterable of paired values from `self` and `other`.
 
     Key set and order is determined by `self`."""
-    return (self.Get(key), other.Get(key)) for key in self.Keys()
+    return ((self.Get(key), other.Get(key)) for key in self.Keys())
 
   def AsDict(self):
     """Convert to an ordered dict."""
