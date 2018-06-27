@@ -263,7 +263,7 @@ class BaseHolster(object):
 
   @classmethod
   def Map(klass, fn, *holsters):
-    return klass.MapItems(lambda key, *values: return (key, fn(*values)), *holsters)
+    return klass.MapItems(lambda key, *values: (key, fn(*values)), *holsters)
 
   @classmethod
   def MapItems(klass, fn, *holsters):
