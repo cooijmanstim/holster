@@ -271,7 +271,7 @@ class BaseHolster(object):
       raise ValueError("cannot map over non-isomorphic holsters")
     result = Holster()
     result._PropagateEmpty(holsters[0])
-    for key in self.Keys():
+    for key in holsters[0].Keys():
       values = tuple(holster[key] for holster in holsters)
       newkey, newvalue = fn(key, *values)
       result[newkey] = newvalue
